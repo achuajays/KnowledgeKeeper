@@ -1,4 +1,4 @@
-# AI Knowledge Assistant
+# KnowledgeKeeper
 
 ![AI Knowledge Assistant](banner.png)
 
