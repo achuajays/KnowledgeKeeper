@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 import pickle
 import os
+from nltk.tokenize import sent_tokenize
 
 # Page config for a cleaner look
 st.set_page_config(
@@ -94,12 +95,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# ---------------------------
+# Storage Functions
+# ---------------------------
 
-# Initialize storage
 def ensure_storage_directory():
     """Ensure the storage directory exists"""
     os.makedirs('.streamlit', exist_ok=True)
-
 
 def save_chats_to_storage():
     """Save chats to local storage"""
@@ -110,7 +112,6 @@ def save_chats_to_storage():
     except Exception as e:
         st.warning(f"Failed to save chats: {str(e)}")
 
-
 def load_chats_from_storage():
     """Load chats from local storage"""
     try:
@@ -119,8 +120,10 @@ def load_chats_from_storage():
     except:
         return {}
 
+# ---------------------------
+# Session State Initialization
+# ---------------------------
 
-# Initialize session state
 if 'chats' not in st.session_state:
     st.session_state.chats = load_chats_from_storage()
 if 'current_chat_id' not in st.session_state:
@@ -128,6 +131,9 @@ if 'current_chat_id' not in st.session_state:
 if 'user_input' not in st.session_state:
     st.session_state.user_input = ""
 
+# ---------------------------
+# Wikipedia API Functions
+# ---------------------------
 
 def search_wikipedia(prompt):
     """Search Wikipedia for the given prompt."""
@@ -147,7 +153,6 @@ def search_wikipedia(prompt):
     except requests.exceptions.RequestException as e:
         st.error(f"Error searching Wikipedia: {str(e)}")
         return []
-
 
 def get_plain_text_extract(page_id):
     """Retrieve plain text extract from Wikipedia."""
@@ -172,17 +177,18 @@ def get_plain_text_extract(page_id):
         st.error(f"Error retrieving Wikipedia content: {str(e)}")
         return ''
 
+# ---------------------------
+# Groq Summarization Function
+# ---------------------------
 
 def generate_answer(context, topic):
     """Generate answer using Groq API."""
     try:
         client = Groq()
-
         if context.strip():
             user_message = f"Summarize the following Wikipedia content for the topic '{topic}':\n\n{context}"
         else:
             user_message = f"No Wikipedia results were found for the topic '{topic}'. Please provide an informative answer on this topic."
-
         messages = [
             {
                 "role": "system",
@@ -193,7 +199,6 @@ def generate_answer(context, topic):
                 "content": user_message
             }
         ]
-
         chat_completion = client.chat.completions.create(
             messages=messages,
             model="llama-3.3-70b-versatile",
@@ -208,31 +213,28 @@ def generate_answer(context, topic):
         st.error(f"Error generating answer: {str(e)}")
         return "I apologize, but I encountered an error while generating the answer. Please try again."
 
-
 def process_query(query):
     """Process the user query and generate response."""
     results = search_wikipedia(query)
-
     if results:
         first_result = results[0]
         page_id = first_result.get('pageid')
         extract_text = get_plain_text_extract(page_id)
     else:
         extract_text = ""
-
     return generate_answer(extract_text, query)
 
+# ---------------------------
+# Chat Management Functions
+# ---------------------------
 
 def create_new_chat():
-    """Create a new chat and manage chat limit"""
+    """Create a new chat and manage chat limit."""
     chat_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    # Check if we have 5 or more chats
     if len(st.session_state.chats) >= 5:
-        # Remove the oldest chat
+        # Remove the oldest chat if there are already 5 chats
         oldest_chat_id = min(st.session_state.chats.keys())
         del st.session_state.chats[oldest_chat_id]
-
     st.session_state.chats[chat_id] = {
         "title": "New Chat",
         "messages": []
@@ -240,57 +242,52 @@ def create_new_chat():
     st.session_state.current_chat_id = chat_id
     save_chats_to_storage()
 
-
 def delete_chat(chat_id):
-    """Delete a specific chat"""
+    """Delete a specific chat."""
     if chat_id in st.session_state.chats:
         del st.session_state.chats[chat_id]
         if st.session_state.current_chat_id == chat_id:
             st.session_state.current_chat_id = next(iter(st.session_state.chats)) if st.session_state.chats else None
         save_chats_to_storage()
 
-
 def handle_input():
-    """Handle user input and generate response"""
+    """Handle user input and generate response."""
     if st.session_state.user_input and st.session_state.current_chat_id:
         query = st.session_state.user_input
         current_chat = st.session_state.chats[st.session_state.current_chat_id]
-
         # Add user message
         current_chat["messages"].append({
             "role": "user",
             "content": query,
             "timestamp": datetime.now().strftime("%H:%M")
         })
-
         # Update chat title if it's the first message
         if current_chat["title"] == "New Chat":
             current_chat["title"] = query[:30] + "..." if len(query) > 30 else query
-
         st.session_state.user_input = ""
-
         # Generate and add assistant response
         with st.spinner("Searching knowledge base..."):
             response = process_query(query)
-
         current_chat["messages"].append({
             "role": "assistant",
             "content": response,
             "timestamp": datetime.now().strftime("%H:%M")
         })
-
         save_chats_to_storage()
 
+# ---------------------------
+# Main Application
+# ---------------------------
 
 def main():
-    # Render sidebar
+    # Render sidebar without search functionality
     with st.sidebar:
         if st.button("+ New Chat", type="primary"):
             create_new_chat()
 
         st.markdown("### Your Chats")
-
-        for chat_id, chat_data in st.session_state.chats.items():
+        # Iterate over a static copy to avoid modification errors
+        for chat_id, chat_data in list(st.session_state.chats.items()):
             col1, col2 = st.columns([5, 1])
             with col1:
                 if st.button(
@@ -303,17 +300,14 @@ def main():
                 if st.button("🗑️", key=f"delete_{chat_id}"):
                     delete_chat(chat_id)
 
-    # Create initial chat if none exists
+    # Create an initial chat if none exists
     if not st.session_state.chats:
         create_new_chat()
 
     # Main chat area
     if st.session_state.current_chat_id:
         current_chat = st.session_state.chats[st.session_state.current_chat_id]
-
         st.title(current_chat["title"])
-
-        # Chat messages container
         chat_container = st.container()
         with chat_container:
             for message in current_chat["messages"]:
@@ -331,15 +325,12 @@ def main():
                             <div class="message-timestamp">{message["timestamp"]}</div>
                         </div>
                     """, unsafe_allow_html=True)
-
-        # Input area
         st.text_input(
             "Ask a question...",
             key="user_input",
             placeholder="Type your question here and press Enter",
             on_change=handle_input
         )
-
 
 if __name__ == "__main__":
     main()
