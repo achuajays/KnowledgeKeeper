@@ -143,6 +143,5 @@ Contributions are welcome! Please fork the repository, make your changes, and op
 - [Streamlit](https://streamlit.io/)
 - [Wikipedia API](https://www.mediawiki.org/wiki/API:Main_page)
 - [Groq API](https://www.groq.com/)
-- [NLTK](https://www.nltk.org/)
 - Thanks to the open-source community for the invaluable resources and libraries used in this project.
 
