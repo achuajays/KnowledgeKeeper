@@ -3,7 +3,7 @@
 ![AI Knowledge Assistant](banner.png)
 
 
-The **AI Knowledge Assistant** is a Streamlit-based chat application that integrates with the Wikipedia and Groq APIs to provide users with concise, informative answers on any topic. The application searches Wikipedia for relevant articles, extracts only the introductory content, and then uses the Groq API to generate a summary or informative answer. If no Wikipedia results are found, the assistant generates an answer directly using Groq.
+The **KnowledgeKeeper** is a Streamlit-based chat application that integrates with the Wikipedia and Groq APIs to provide users with concise, informative answers on any topic. The application searches Wikipedia for relevant articles, extracts only the introductory content, and then uses the Groq API to generate a summary or informative answer. If no Wikipedia results are found, the assistant generates an answer directly using Groq.
 
 ---
 
